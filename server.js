@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 })
 
 // Connect MongoDB
-mongoose.connect('mongodb://localhost:27017/hireai', {
+mongoose.connect(process.env.MONGO_URI, {
   serverSelectionTimeoutMS: 10000,
   family: 4
 })
