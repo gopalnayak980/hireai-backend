@@ -45,5 +45,44 @@ Respond with JSON only, no extra text.
     res.status(500).json({ message: 'AI analysis failed', error: err.message })
   }
 })
+router.post('/interview', async (req, res) => {
+  try {
+    const { role, experience } = req.body
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+
+    const prompt = `
+You are an expert technical interviewer.
+
+Generate 8 interview questions with detailed answers for:
+Role: ${role}
+Experience Level: ${experience}
+
+Respond in this EXACT JSON format only:
+{
+  "questions": [
+    {
+      "question": "What is...",
+      "answer": "Detailed answer here...",
+      "tip": "Interview tip here"
+    }
+  ]
+}
+
+Mix of: technical concepts, practical scenarios, problem solving.
+JSON only, no extra text.
+`
+
+    const result = await model.generateContent(prompt)
+    const response = result.response.text()
+    const cleaned = response.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+
+    res.json(parsed)
+  } catch (err) {
+    console.error('Interview AI Error:', err.message)
+    res.status(500).json({ message: 'Failed to generate questions', error: err.message })
+  }
+})
 
 module.exports = router

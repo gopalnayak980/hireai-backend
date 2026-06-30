@@ -16,6 +16,7 @@ app.use(express.json())
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/jobs', require('./routes/jobs'))
 app.use('/api/ai', require('./routes/ai'))
+app.use('/api/saved', require('./routes/saved'))
 
 // Test route
 app.get('/', (req, res) => {
