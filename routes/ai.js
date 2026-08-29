@@ -8,7 +8,8 @@ router.post('/match', async (req, res) => {
   try {
     const { resumeText, jobTitle, jobDescription, skills } = req.body
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash'
+    const model = genAI.getGenerativeModel({ model: modelName })
 
     const prompt = `
 You are an expert HR and resume analyzer.
@@ -24,7 +25,7 @@ Analyze this resume against the job and respond in this EXACT JSON format only:
 
 JOB TITLE: ${jobTitle}
 JOB DESCRIPTION: ${jobDescription}
-REQUIRED SKILLS: ${skills.join(', ')}
+REQUIRED SKILLS: ${Array.isArray(skills) ? skills.join(', ') : skills}
 
 RESUME:
 ${resumeText}
@@ -37,7 +38,8 @@ Respond with JSON only, no extra text.
     console.log('AI Response:', response)
 
     const cleaned = response.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(cleaned)
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned)
 
     res.json(parsed)
   } catch (err) {
@@ -49,7 +51,8 @@ router.post('/interview', async (req, res) => {
   try {
     const { role, experience } = req.body
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash'
+    const model = genAI.getGenerativeModel({ model: modelName })
 
     const prompt = `
 You are an expert technical interviewer.
@@ -76,7 +79,8 @@ JSON only, no extra text.
     const result = await model.generateContent(prompt)
     const response = result.response.text()
     const cleaned = response.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(cleaned)
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned)
 
     res.json(parsed)
   } catch (err) {

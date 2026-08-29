@@ -28,8 +28,9 @@ router.get('/search', async (req, res) => {
           app_key: process.env.ADZUNA_APP_KEY,
           what: what || 'developer',
           where: where || 'india',
-          results_per_page: 10
-        }
+          results_per_page: 10,
+        },
+        timeout: 10000,
       }
     )
 
