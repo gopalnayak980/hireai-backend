@@ -1,14 +1,27 @@
 const jwt = require('jsonwebtoken')
 
-const auth = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1]
-  if (!token) return res.status(401).json({ message: 'Access denied!' })
+const authenticate = (req, res, next) => {
+  const [scheme, token, ...extra] = (req.headers.authorization || '').split(' ')
+  if (scheme !== 'Bearer' || !token || extra.length) {
+    return res.status(401).json({ message: 'Authentication required' })
+  }
+
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET)
-    next()
+    const payload = jwt.verify(token, process.env.JWT_SECRET)
+    if (!payload.id) return res.status(401).json({ message: 'Invalid token' })
+    req.user = payload
+    return next()
   } catch {
-    res.status(401).json({ message: 'Invalid token!' })
+    return res.status(401).json({ message: 'Invalid token' })
   }
 }
 
-module.exports = auth  
+const requireRole = (role) => (req, res, next) => {
+  if (!req.user || req.user.role !== role) {
+    return res.status(403).json({ message: 'Insufficient permissions' })
+  }
+  return next()
+}
+
+module.exports = authenticate
+module.exports.requireRole = requireRole

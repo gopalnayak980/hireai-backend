@@ -1,55 +1,54 @@
 const express = require('express')
 const router = express.Router()
 const SavedJob = require('../models/SavedJob')
-const jwt = require('jsonwebtoken')
+const auth = require('../middleware/auth')
 
-// Auth middleware
-const auth = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1]
-  if (!token) return res.status(401).json({ message: 'No token!' })
-  try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET)
-    next()
-  } catch {
-    res.status(401).json({ message: 'Invalid token!' })
-  }
-}
+const isText = (value, maxLength) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maxLength
+const optionalText = (value, maxLength) => value === undefined || value === '' || (typeof value === 'string' && value.length <= maxLength)
 
-// Save a job
 router.post('/', auth, async (req, res) => {
+  const { jobId, title, company, location, salary, url } = req.body || {}
+  const normalizedJobId = (typeof jobId === 'string' || (typeof jobId === 'number' && Number.isFinite(jobId)))
+    ? String(jobId).trim()
+    : ''
+  if (!isText(normalizedJobId, 200) || !isText(title, 200) || !isText(company, 200) ||
+      !optionalText(location, 200) || !optionalText(salary, 100) || !optionalText(url, 2048)) {
+    return res.status(400).json({ message: 'Invalid saved job details' })
+  }
+
   try {
-    const { jobId, title, company, location, salary, url } = req.body
-
-    // Check already saved
-    const existing = await SavedJob.findOne({ user: req.user.id, jobId })
-    if (existing) return res.status(400).json({ message: 'Job already saved!' })
-
     const saved = await SavedJob.create({
-      user: req.user.id, jobId, title, company, location, salary, url
+      user: req.user.id,
+      jobId: normalizedJobId,
+      title: title.trim(),
+      company: company.trim(),
+      location,
+      salary,
+      url,
     })
-    res.status(201).json(saved)
+    return res.status(201).json(saved)
   } catch (err) {
-    res.status(500).json({ message: 'Server error' })
+    if (err.code === 11000) return res.status(400).json({ message: 'Job already saved!' })
+    return res.status(500).json({ message: 'Server error' })
   }
 })
 
-// Get all saved jobs
 router.get('/', auth, async (req, res) => {
   try {
     const jobs = await SavedJob.find({ user: req.user.id }).sort({ createdAt: -1 })
-    res.json(jobs)
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' })
+    return res.json(jobs)
+  } catch {
+    return res.status(500).json({ message: 'Server error' })
   }
 })
 
-// Remove saved job
 router.delete('/:jobId', auth, async (req, res) => {
+  if (!isText(req.params.jobId, 200)) return res.status(400).json({ message: 'Invalid job ID' })
   try {
     await SavedJob.findOneAndDelete({ user: req.user.id, jobId: req.params.jobId })
-    res.json({ message: 'Job removed!' })
-  } catch (err) {
-    res.status(500).json({ message: 'Server error' })
+    return res.json({ message: 'Job removed!' })
+  } catch {
+    return res.status(500).json({ message: 'Server error' })
   }
 })
 

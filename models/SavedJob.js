@@ -10,4 +10,6 @@ const savedJobSchema = new mongoose.Schema({
   url: { type: String },
 }, { timestamps: true })
 
+savedJobSchema.index({ user: 1, jobId: 1 }, { unique: true })
+
 module.exports = mongoose.model('SavedJob', savedJobSchema)
