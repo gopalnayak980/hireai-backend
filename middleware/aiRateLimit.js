@@ -1,5 +1,6 @@
 const WINDOW_MS = 15 * 60 * 1000
-const MAX_REQUESTS = 10
+// Leave room for a 12-question practice session (generate, evaluate each answer, report).
+const MAX_REQUESTS = 20
 const MAX_TRACKED_KEYS = 50000
 const requests = new Map()
 

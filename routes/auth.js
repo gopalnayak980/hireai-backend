@@ -10,6 +10,11 @@ const registrationRateLimit = createIpRateLimit({
   maxRequests: 10,
   message: 'Too many registration attempts. Please try again later.',
 })
+const loginRateLimit = createIpRateLimit({
+  windowMs: 15 * 60 * 1000,
+  maxRequests: 30,
+  message: 'Too many login attempts. Please try again later.',
+})
 
 const isString = (value) => typeof value === 'string'
 const validEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -44,7 +49,7 @@ router.post('/register', registrationRateLimit, async (req, res) => {
   }
 })
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimit, async (req, res) => {
   const { email, password } = req.body || {}
   if (!isString(email) || email.trim().length > 254 || !validEmail(email.trim()) ||
       !isString(password) || !password.length || password.length > 128) {

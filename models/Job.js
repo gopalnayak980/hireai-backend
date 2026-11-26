@@ -13,4 +13,6 @@ const jobSchema = new mongoose.Schema({
   postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true })
 
+jobSchema.index({ createdAt: -1, _id: -1 })
+
 module.exports = mongoose.model('Job', jobSchema)
