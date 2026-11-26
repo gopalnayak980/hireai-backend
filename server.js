@@ -51,7 +51,10 @@ const configuredOrigins = getConfiguredOrigins()
 if (process.env.NODE_ENV === 'production' && configuredOrigins.length === 0) {
   throw new Error('Configure FRONTEND_URL or FRONTEND_URLS before starting in production')
 }
-const allowedOrigins = new Set([...localOrigins, ...configuredOrigins])
+const allowedOrigins = new Set([
+  ...(process.env.NODE_ENV === 'production' ? [] : localOrigins),
+  ...configuredOrigins,
+])
 
 app.use(cors({
   origin(origin, callback) {
@@ -107,13 +110,14 @@ const startServer = async () => {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be a valid TCP port')
 
   await mongoose.connect(process.env.MONGO_URI, {
+    autoIndex: process.env.NODE_ENV !== 'production',
     serverSelectionTimeoutMS: 10000,
     family: 4,
   })
   let server
   try {
     server = await new Promise((resolve, reject) => {
-      const listener = app.listen(port)
+      const listener = app.listen(port, '0.0.0.0')
       listener.once('listening', () => resolve(listener))
       listener.once('error', reject)
     })
