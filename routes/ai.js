@@ -36,6 +36,7 @@ const validStringList = (value, maxItems = 20) => (
 )
 
 router.post('/match', auth, aiRateLimit, aiIpRateLimit, async (req, res) => {
+  const requestStartedAt = Date.now()
   const { resumeText, jobTitle, jobDescription, skills } = req.body || {}
   const validSkills = skills === undefined || skills === null || skills === '' ||
     (Array.isArray(skills) && skills.length <= 50 && skills.every((skill) => isText(skill, 100))) ||
@@ -127,7 +128,45 @@ ${resumeText.trim()}`
       learningRecommendations: parsed.learningRecommendations,
       bulletRecommendations: parsed.bulletRecommendations,
     })
-  } catch {
+  } catch (error) {
+    const name = error?.constructor?.name || error?.name
+    const knownErrorNames = new Set([
+      'AbortError',
+      'GoogleGenerativeAIAbortError',
+      'GoogleGenerativeAIFetchError',
+      'GoogleGenerativeAIError',
+      'GoogleGenerativeAIRequestInputError',
+      'GoogleGenerativeAIResponseError',
+      'SyntaxError',
+      'TimeoutError',
+      'TypeError',
+    ])
+    const errorName = knownErrorNames.has(name) ? name : 'Error'
+    const knownErrorCodes = new Set([
+      'ABORT_ERR',
+      'ECONNABORTED',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'EAI_AGAIN',
+      'ENOTFOUND',
+    ])
+    const providerCode = typeof error?.code === 'string' && knownErrorCodes.has(error.code)
+      ? error.code
+      : null
+    const providerStatus = [error?.status, error?.statusCode, error?.response?.status]
+      .find((status) => Number.isInteger(status) && status >= 100 && status <= 599) ?? null
+    const timeout = errorName === 'GoogleGenerativeAIAbortError' ||
+      errorName === 'AbortError' || errorName === 'TimeoutError' ||
+      providerCode === 'ECONNABORTED' || providerCode === 'ETIMEDOUT' ||
+      (typeof error?.message === 'string' && /timed?\s*out|timeout|aborted/i.test(error.message))
+
+    console.error('AI_MATCH_FAILED', {
+      elapsedMs: Date.now() - requestStartedAt,
+      errorName,
+      providerStatus,
+      providerCode,
+      timeout,
+    })
     return res.status(502).json({ message: 'AI analysis is temporarily unavailable' })
   }
 })
