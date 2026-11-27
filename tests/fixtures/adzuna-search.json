@@ -1,0 +1,38 @@
+{
+  "count": 3,
+  "results": [
+    {
+      "id": "hireai-local-e2e-job-1",
+      "title": "Local E2E Quality Engineer",
+      "company": { "display_name": "HireAI Local Fixture" },
+      "location": { "display_name": "Bengaluru" },
+      "salary_min": 800000,
+      "salary_max": 1200000,
+      "description": "Synthetic fixture listing for local HireAI browser tests.",
+      "redirect_url": "https://example.invalid/local-e2e-job-1",
+      "created": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": "hireai-local-e2e-job-2",
+      "title": "Local E2E Backend Engineer",
+      "company": { "display_name": "HireAI Local Fixture" },
+      "location": { "display_name": "Remote" },
+      "salary_min": 900000,
+      "salary_max": 1400000,
+      "description": "Synthetic fixture listing for local HireAI browser tests.",
+      "redirect_url": "https://example.invalid/local-e2e-job-2",
+      "created": "2026-01-02T00:00:00Z"
+    },
+    {
+      "id": "hireai-local-e2e-job-3",
+      "title": "Local E2E Frontend Engineer",
+      "company": { "display_name": "HireAI Local Fixture" },
+      "location": { "display_name": "Pune" },
+      "salary_min": 700000,
+      "salary_max": 1100000,
+      "description": "Synthetic fixture listing for local HireAI browser tests.",
+      "redirect_url": "https://example.invalid/local-e2e-job-3",
+      "created": "2026-01-03T00:00:00Z"
+    }
+  ]
+}

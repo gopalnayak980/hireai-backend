@@ -3,8 +3,9 @@ const mongoose = require('mongoose')
 const router = express.Router()
 const Job = require('../models/Job')
 const auth = require('../middleware/auth')
-const axios = require('axios')
 const createIpRateLimit = require('../middleware/ipRateLimit')
+const { CURRENCY_BY_COUNTRY, formatLegacySalary } = require('../utils/jobSalary')
+const { searchAdzuna } = require('../utils/adzunaSearch')
 
 const isString = (value) => typeof value === 'string'
 const cleanText = (value, maxLength) => isString(value) && value.trim().length > 0 && value.trim().length <= maxLength
@@ -12,6 +13,10 @@ const RESULTS_PER_PAGE = 10
 const MAX_SEARCH_PAGE = 100
 const LIST_PAGE_SIZE = 50
 const MAX_LIST_PAGE = 10000
+const SUPPORTED_COUNTRIES = new Set([
+  'in', 'gb', 'us', 'at', 'au', 'be', 'br', 'ca', 'ch', 'de',
+  'es', 'fr', 'it', 'mx', 'nl', 'nz', 'pl', 'sg', 'za',
+])
 const searchRateLimit = createIpRateLimit({
   windowMs: 15 * 60 * 1000,
   maxRequests: 120,
@@ -26,23 +31,34 @@ const parseListPage = (value) => {
 
 router.get('/search', searchRateLimit, async (req, res) => {
   const { what, where } = req.query
+  const requestedCountry = req.query.country
+  const country = requestedCountry === undefined
+    ? 'in'
+    : typeof requestedCountry === 'string'
+      ? requestedCountry.trim().toLowerCase()
+      : ''
   const requestedPage = req.query.page
   const pageText = typeof requestedPage === 'string' ? requestedPage.trim() : ''
   const page = requestedPage === undefined ? 1 : (/^\d+$/.test(pageText) ? Number(pageText) : NaN)
   if (!Number.isSafeInteger(page) || page < 1 || page > MAX_SEARCH_PAGE) {
     return res.status(400).json({ message: `Page must be an integer between 1 and ${MAX_SEARCH_PAGE}` })
   }
+  if (!SUPPORTED_COUNTRIES.has(country)) {
+    return res.status(400).json({ message: 'Unsupported country code' })
+  }
   if ((what !== undefined && !cleanText(what, 200)) || (where !== undefined && !cleanText(where, 200))) {
     return res.status(400).json({ message: 'Search keywords and location must be 1–200 characters' })
   }
 
   try {
-    const response = await axios.get(`https://api.adzuna.com/v1/api/jobs/in/search/${page}`, {
+    const response = await searchAdzuna({
+      country,
+      page,
       params: {
         app_id: process.env.ADZUNA_APP_ID,
         app_key: process.env.ADZUNA_APP_KEY,
         what: what || 'developer',
-        where: where || 'india',
+        where: where || (country === 'in' ? 'india' : undefined),
         results_per_page: RESULTS_PER_PAGE,
       },
       timeout: 10000,
@@ -51,12 +67,14 @@ router.get('/search', searchRateLimit, async (req, res) => {
     const jobs = response.data.results.map((job) => ({
       id: job.id,
       source: 'adzuna',
+      country,
       title: job.title,
       company: job.company?.display_name || 'Unknown',
       location: job.location?.display_name || 'Remote',
-      salary: job.salary_min
-        ? `₹${Math.round(job.salary_min / 1000)}K - ₹${Math.round(job.salary_max / 1000)}K`
-        : 'Not disclosed',
+      salary: formatLegacySalary(country, job.salary_min, job.salary_max),
+      ...(Number.isFinite(job.salary_min) && job.salary_min > 0 ? { salaryMin: job.salary_min } : {}),
+      ...(Number.isFinite(job.salary_max) && job.salary_max > 0 ? { salaryMax: job.salary_max } : {}),
+      currencyCode: CURRENCY_BY_COUNTRY[country],
       description: job.description,
       url: job.redirect_url,
       created: job.created,
